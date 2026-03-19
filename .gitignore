@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# Environment variables — NEVER commit these
+.env
+.env.local
+.env.*.local
+apps/**/.env
+apps/**/.env.local
+
+# Build outputs
+dist/
+.next/
+out/
+build/
+
+# Database files — do not commit dev DB
+*.db
+*.db-journal
+*.sqlite
+
+# Prisma generated client
+apps/api/node_modules/.prisma/
+
+# Private keys and sensitive files — CRITICAL
+*.pem
+*.key
+demo-wallet.json
+*private-key*
+*secret*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Testing
+coverage/
+.nyc_output/
+
+# Misc
+.turbo/

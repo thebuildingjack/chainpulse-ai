@@ -1,0 +1,20 @@
+{
+  "name": "chainpulse-ai",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n API,WEB,WORKER -c green,blue,yellow \"pnpm --filter @chainpulse/api dev\" \"pnpm --filter @chainpulse/web dev\" \"pnpm --filter @chainpulse/worker dev\"",
+    "dev:api": "pnpm --filter @chainpulse/api dev",
+    "dev:web": "pnpm --filter @chainpulse/web dev",
+    "dev:worker": "pnpm --filter @chainpulse/worker dev",
+    "build": "pnpm --filter @chainpulse/api build && pnpm --filter @chainpulse/web build",
+    "db:generate": "pnpm --filter @chainpulse/api db:generate",
+    "db:push": "pnpm --filter @chainpulse/api db:push",
+    "db:seed": "pnpm --filter @chainpulse/api db:seed",
+    "setup": "pnpm install && pnpm approve-builds && cd apps/api && npx prisma generate && npx prisma db push && npx ts-node prisma/seed.ts && cd ../.."
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "typescript": "^5.3.3"
+  }
+}

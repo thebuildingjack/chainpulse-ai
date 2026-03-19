@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --color-brand: #14F195;
+  --color-brand-dim: #0fa96a;
+  --color-solana-purple: #9945FF;
+}
+
+body {
+  background: #0a0f0d;
+}
+
+/* Wallet adapter overrides */
+.wallet-adapter-button {
+  background: linear-gradient(135deg, #14F195, #9945FF) !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  height: 40px !important;
+}
+
+.wallet-adapter-modal-wrapper {
+  background: #0d1410 !important;
+  border: 1px solid #1a2620 !important;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #0d1410; }
+::-webkit-scrollbar-thumb { background: #1a2620; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #14F195; }
+
+/* Pulse animation for live indicator */
+@keyframes pulse-green {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.pulse-green { animation: pulse-green 2s ease-in-out infinite; }
+
+/* Card hover glow */
+.card-glow:hover {
+  box-shadow: 0 0 20px rgba(20, 241, 149, 0.08);
+}

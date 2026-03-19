@@ -1,0 +1,141 @@
+// apps/api/prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DB_URL")
+}
+
+// ─── User / Auth ──────────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  walletAddress String    @unique
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  sessions      AgentSession[]
+  nonces        AuthNonce[]
+}
+
+model AuthNonce {
+  id            String   @id @default(cuid())
+  walletAddress String
+  nonce         String   @unique
+  expiresAt     DateTime
+  used          Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  user          User?    @relation(fields: [walletAddress], references: [walletAddress])
+}
+
+// ─── Agent Session ────────────────────────────────────────────────────────────
+
+model AgentSession {
+  id                    String   @id @default(cuid())
+  userId                String
+  walletAddress         String
+  watchlistMints        String   @default("[]") // JSON array
+  watchlistPrograms     String   @default("[]") // JSON array
+  timeframe             String   @default("medium")
+  riskLevel             String   @default("medium")
+  permissionsMode       String   @default("READ_ONLY")
+  guardrails            String   @default("{}") // JSON object
+  isActive              Boolean  @default(true)
+  loopIntervalMinutes   Int      @default(15)
+  lastRunAt             DateTime?
+  nextRunAt             DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  user                  User     @relation(fields: [userId], references: [id])
+  insights              Insight[]
+  actions               AgentAction[]
+  runs                  AgentRun[]
+  dailySpend            DailySpend[]
+}
+
+// ─── Agent Run ────────────────────────────────────────────────────────────────
+
+model AgentRun {
+  id           String   @id @default(cuid())
+  sessionId    String
+  startedAt    DateTime @default(now())
+  completedAt  DateTime?
+  status       String   @default("RUNNING") // RUNNING|COMPLETED|FAILED
+  snapshotData String?  // JSON
+  aiOutputRaw  String?  // raw AI response
+  toolCallLog  String   @default("[]") // JSON array of ToolCallLog
+  errorMessage String?
+
+  session      AgentSession @relation(fields: [sessionId], references: [id])
+  insights     Insight[]
+  actions      AgentAction[]
+}
+
+// ─── Insight ──────────────────────────────────────────────────────────────────
+
+model Insight {
+  id              String   @id @default(cuid())
+  sessionId       String
+  runId           String
+  title           String
+  type            String   // MOMENTUM|VOLUME_SPIKE|ROUTE_QUALITY|WHALE_ACTIVITY|NEW_TOKEN|OTHER
+  severity        String   // LOW|MED|HIGH
+  confidence      Float
+  summary         String
+  evidence        String   @default("[]") // JSON array
+  recommendedNext String
+  createdAt       DateTime @default(now())
+
+  session         AgentSession @relation(fields: [sessionId], references: [id])
+  run             AgentRun     @relation(fields: [runId], references: [id])
+}
+
+// ─── Agent Action ─────────────────────────────────────────────────────────────
+
+model AgentAction {
+  id               String   @id @default(cuid())
+  sessionId        String
+  runId            String
+  actionType       String   // JUPITER_SWAP|NOTIFY|TRANSFER
+  risk             String   // LOW|MED|HIGH
+  params           String   @default("{}") // JSON
+  reason           String
+  status           String   @default("PENDING_APPROVAL")
+  policyDecision   String?  // JSON PolicyDecision
+  txSignature      String?
+  explorerLink     String?
+  failureReason    String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  session          AgentSession @relation(fields: [sessionId], references: [id])
+  run              AgentRun     @relation(fields: [runId], references: [id])
+}
+
+// ─── Daily Spend Tracking ─────────────────────────────────────────────────────
+
+model DailySpend {
+  id         String   @id @default(cuid())
+  sessionId  String
+  date       String   // YYYY-MM-DD
+  spentSol   Float    @default(0)
+  updatedAt  DateTime @updatedAt
+
+  session    AgentSession @relation(fields: [sessionId], references: [id])
+
+  @@unique([sessionId, date])
+}
+
+// ─── Snapshot Cache ───────────────────────────────────────────────────────────
+
+model SnapshotCache {
+  id           String   @id @default(cuid())
+  sessionId    String   @unique
+  snapshotJson String   // last known good snapshot
+  capturedAt   DateTime
+  updatedAt    DateTime @updatedAt
+}
