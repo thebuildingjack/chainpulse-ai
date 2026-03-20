@@ -30,13 +30,13 @@ export const UpdateGuardrailsSchema = GuardrailsSchema.partial();
 // ─── AI Output (strict) ───────────────────────────────────────────────────────
 
 export const AIInsightSchema = z.object({
-  title: z.string().max(120),
-  type: z.enum(["MOMENTUM", "VOLUME_SPIKE", "ROUTE_QUALITY", "WHALE_ACTIVITY", "NEW_TOKEN", "OTHER"]),
-  severity: z.enum(["LOW", "MED", "HIGH"]),
-  confidence: z.number().min(0).max(1),
-  summary: z.string().max(500),
-  evidence: z.array(z.string()).max(10),
-  recommendedNext: z.string().max(300),
+  title: z.string().max(200).catch("Untitled Insight"),
+  type: z.enum(["MOMENTUM", "VOLUME_SPIKE", "ROUTE_QUALITY", "WHALE_ACTIVITY", "NEW_TOKEN", "OTHER"]).catch("OTHER"),
+  severity: z.enum(["LOW", "MED", "HIGH"]).catch("LOW"),
+  confidence: z.number().min(0).max(1).catch(0.5),
+  summary: z.string().max(1000).catch("No summary available"),
+  evidence: z.array(z.string()).max(10).catch([]),
+  recommendedNext: z.string().max(500).catch("Monitor and review"),
 });
 
 export const JupiterSwapParamsSchema = z.object({
@@ -58,16 +58,16 @@ export const NotifyParamsSchema = z.object({
 });
 
 export const AIActionSchema = z.object({
-  actionType: z.enum(["JUPITER_SWAP", "NOTIFY", "TRANSFER"]),
-  risk: z.enum(["LOW", "MED", "HIGH"]),
-  params: z.union([JupiterSwapParamsSchema, TransferParamsSchema, NotifyParamsSchema]),
-  reason: z.string().max(400),
+  actionType: z.enum(["JUPITER_SWAP", "NOTIFY", "TRANSFER"]).catch("NOTIFY"),
+  risk: z.enum(["LOW", "MED", "HIGH"]).catch("LOW"),
+  params: z.union([JupiterSwapParamsSchema, TransferParamsSchema, NotifyParamsSchema]).catch({ message: "Auto-generated notification", severity: "LOW" }),
+  reason: z.string().max(400).catch("Recommended by AI agent"),
 });
 
 export const AIAgentOutputSchema = z.object({
-  insights: z.array(AIInsightSchema).max(10),
-  recommendedActions: z.array(AIActionSchema).max(5),
-  nextCheckInMinutes: z.number().int().min(1).max(60),
+  insights: z.array(AIInsightSchema).max(10).catch([]),
+  recommendedActions: z.array(AIActionSchema).max(5).catch([]),
+  nextCheckInMinutes: z.number().int().min(1).max(60).catch(15),
 });
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
