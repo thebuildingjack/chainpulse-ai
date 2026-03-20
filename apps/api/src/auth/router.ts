@@ -110,6 +110,7 @@ authRouter.post("/verify", async (req: Request, res: Response) => {
     success: true,
     userId: user.id,
     walletAddress,
+    token,
     expiresIn: "7d",
   });
 });
