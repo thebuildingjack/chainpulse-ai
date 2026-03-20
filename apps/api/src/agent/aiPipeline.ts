@@ -76,58 +76,25 @@ function buildSystemPrompt(input: AgentRunInput): string {
 // ─── Build user prompt ────────────────────────────────────────────────────────
 
 function buildUserPrompt(input: AgentRunInput): string {
-  const signalDescriptions = input.signals.map((s) =>
-    `- ${s.type}: score=${s.score.toFixed(2)}, confidence=${s.confidence.toFixed(2)}\n  Evidence: ${s.evidence.slice(0, 2).join(" | ")}`
-  ).join("\n");
+  const topSignals = input.signals
+    .slice(0, 2)
+    .map(s => `${s.type}(score=${s.score.toFixed(2)},conf=${s.confidence.toFixed(2)})`)
+    .join(", ");
 
-  const quoteDescriptions = input.jupiterQuotes.map((q) =>
-    `- ${q.inputMint.slice(0, 12)}→${q.outputMint.slice(0, 12)}: available=${q.available}, priceImpact=${q.priceImpactPct.toFixed(3)}%`
-  ).join("\n");
+  const topRoute = input.jupiterQuotes.find(q => q.available);
 
-  const tokenList = input.tokenAccounts.map((t) =>
-    `${t.symbol || t.mint.slice(0, 12)}: ${t.uiAmount}`
-  ).join(", ");
+  return `Wallet: ${input.walletAddress.slice(0, 16)}
+  SOL: ${input.solBalanceUi.toFixed(3)}
+  TxCount: ${input.recentTxCount}
+  Mode: ${input.permissionsMode}
+  Risk: ${input.riskLevel}
+  MaxSwap: ${input.guardrails.maxSwapSolPerTx}SOL
+  Signals: ${topSignals || "none"}
+  RouteAvail: ${topRoute ? `yes(impact=${topRoute.priceImpactPct.toFixed(3)}%)` : "no"}
+  Whale: ${input.signalSummary.whaleDetected}
+  SOLChange: ${input.signalSummary.solBalanceChangePct.toFixed(1)}%
 
-  const prevInsights = input.previousInsightTitles?.slice(0, 3).join(" | ") || "none";
-
-  return `## On-Chain Snapshot
-Wallet: ${input.walletAddress}
-SOL Balance: ${input.solBalanceUi.toFixed(4)} SOL
-Token Holdings: ${tokenList || "none"}
-Recent Tx Count: ${input.recentTxCount}
-Largest Transfer: ${input.largestTransferSol.toFixed(4)} SOL
-
-## Computed Signals
-${signalDescriptions || "No significant signals detected."}
-
-## Signal Summary
-- SOL Balance Change: ${input.signalSummary.solBalanceChangePct.toFixed(2)}%
-- Tx Count: ${input.signalSummary.txCountLast10}
-- Whale Detected: ${input.signalSummary.whaleDetected}
-- Routes Available: ${input.signalSummary.routesAvailable}
-- New Mints Seen: ${input.signalSummary.newMintsDetected.slice(0, 3).join(", ") || "none"}
-
-## Jupiter Route Quotes
-${quoteDescriptions || "No quotes fetched."}
-
-## Session Preferences
-- Timeframe: ${input.timeframe}
-- Risk Level: ${input.riskLevel}
-- Permissions Mode: ${input.permissionsMode}
-- Max Swap Per Tx: ${input.guardrails.maxSwapSolPerTx} SOL
-- Max Slippage: ${input.guardrails.slippageBpsMax} bps
-- Allowed Output Mints: ${input.guardrails.allowedOutputMints.join(", ") || "any"}
-- Approval Threshold: ${input.guardrails.approvalThresholdSol} SOL
-
-## Watchlist
-${input.watchlistMints.join(", ") || "none"}
-
-## Previous Insights (avoid repeating)
-${prevInsights}
-
----
-Analyze the above data, identify the top 1-3 opportunity insights, and recommend at most 2 safe actions within the guardrails.
-Respond ONLY with the JSON object. No other text.`;
+  Respond with JSON only. 1-2 insights max. No markdown.`;
 }
 
 // ─── Call AI model ────────────────────────────────────────────────────────────
@@ -177,7 +144,7 @@ export async function runAgentInference(input: AgentRunInput): Promise<AIRunResu
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
-        max_tokens: 2048,
+        max_tokens: 512,  // ← add this line
         response_format: { type: "json_object" },
       }),
       signal: AbortSignal.timeout(30000),
