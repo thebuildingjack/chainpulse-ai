@@ -1,12 +1,29 @@
 // apps/web/src/lib/api.ts
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
+function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("cp_token");
+}
+
+export function setToken(token: string) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem("cp_token", token);
+}
+
+export function clearToken() {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem("cp_token");
+}
+
 export async function apiFetch(path: string, options: RequestInit = {}) {
+  const token = getToken();
+
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
-    credentials: "include",
     headers: {
       "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.headers || {}),
     },
   });
@@ -18,8 +35,6 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
 
   return res.json();
 }
-
-// ─── Typed API helpers ────────────────────────────────────────────────────────
 
 export const api = {
   sessions: {

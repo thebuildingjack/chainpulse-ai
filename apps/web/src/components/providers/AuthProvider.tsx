@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import bs58 from "bs58";
-import { apiFetch } from "@/lib/api";
+import { setToken, clearToken, apiFetch } from "@/lib/api";
 
 interface AuthState {
   authenticated: boolean;
@@ -79,6 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ walletAddress: address, signature: signatureBase58, nonce }),
       });
       if (result.success) {
+        setToken(result.token);  // ← save to localStorage
         setAuthenticated(true);
         setUserId(result.userId);
         setWalletAddress(result.walletAddress);
@@ -98,6 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     await apiFetch("/auth/logout", { method: "POST" }).catch(() => {});
+    clearToken();  // ← clear from localStorage
     setAuthenticated(false);
     setUserId(undefined);
     setWalletAddress(undefined);

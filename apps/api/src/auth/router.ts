@@ -105,14 +105,7 @@ authRouter.post("/verify", async (req: Request, res: Response) => {
     JWT_SECRET,
     { expiresIn: "7d" }
   );
-
-  res.cookie("cp_token", token, {
-    httpOnly: true,
-    secure: true,
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
-
+  
   return res.json({
     success: true,
     userId: user.id,
@@ -124,14 +117,13 @@ authRouter.post("/verify", async (req: Request, res: Response) => {
 // ─── POST /auth/logout ────────────────────────────────────────────────────────
 
 authRouter.post("/logout", (_req, res) => {
-  res.clearCookie("cp_token");
   res.json({ success: true });
 });
 
 // ─── GET /auth/me ─────────────────────────────────────────────────────────────
 
 authRouter.get("/me", (req: Request, res: Response) => {
-  const token = req.cookies?.cp_token || req.headers.authorization?.replace("Bearer ", "");
+  const token = req.headers.authorization?.replace("Bearer ", "");
   if (!token) return res.json({ authenticated: false });
 
   try {
