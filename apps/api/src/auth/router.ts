@@ -108,8 +108,8 @@ authRouter.post("/verify", async (req: Request, res: Response) => {
 
   res.cookie("cp_token", token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: true,
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 
