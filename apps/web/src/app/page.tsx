@@ -267,23 +267,93 @@ function LandingScreen() {
   useEffect(() => { setMounted(true); }, []);
 
   return (
-    <div style={{ minHeight: "75vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ textAlign: "center", maxWidth: 560 }}>
-        <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "0.16em", color: "var(--green-dim)", marginBottom: 20, textTransform: "uppercase" }}>
+    <div style={{
+      minHeight: "75vh",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "0 16px",
+    }}>
+      <div style={{ textAlign: "center", maxWidth: 560, width: "100%" }}>
+        {/* Badge */}
+        <div style={{
+          fontFamily: "monospace",
+          fontSize: 10,
+          letterSpacing: "0.16em",
+          color: "#00a855",
+          marginBottom: 20,
+          textTransform: "uppercase",
+        }}>
           Buildifi AI Track · Solana Devnet
         </div>
-        <h1 style={{ fontFamily: "var(--sans)", fontWeight: 800, fontSize: 48, color: "#e8f5ec", lineHeight: 1.1, marginBottom: 16, letterSpacing: "-0.02em" }}>
-          Chain<span style={{ color: "var(--green)" }}>Pulse</span> AI
+
+        {/* Hero title */}
+        <h1 style={{
+          fontFamily: "sans-serif",
+          fontWeight: 800,
+          fontSize: "clamp(32px, 8vw, 52px)",
+          color: "#e8f5ec",
+          lineHeight: 1.1,
+          marginBottom: 16,
+          letterSpacing: "-0.02em",
+        }}>
+          Chain<span style={{ color: "#00e87a" }}>Pulse</span> AI
         </h1>
-        <p style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--text-dim)", lineHeight: 1.7, marginBottom: 32 }}>
+
+        {/* Subtitle */}
+        <p style={{
+          fontFamily: "monospace",
+          fontSize: "clamp(11px, 3vw, 13px)",
+          color: "#c8d8cc",
+          lineHeight: 1.7,
+          marginBottom: 32,
+          padding: "0 8px",
+        }}>
           Autonomous Solana agent · spots on-chain signals · executes safely within your rules
         </p>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginBottom: 32 }}>
-          {["▲ momentum", "⚡ volume spikes", "◉ whale activity", "◈ route quality", "✦ new tokens", "⬡ policy engine"].map(f => (
-            <span key={f} style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--text-dim)", border: "1px solid var(--border)", padding: "4px 10px", borderRadius: 1, letterSpacing: "0.06em" }}>{f}</span>
+
+        {/* Feature pills */}
+        <div style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 8,
+          justifyContent: "center",
+          marginBottom: 40,
+          padding: "0 8px",
+        }}>
+          {[
+            "▲ momentum",
+            "⚡ volume spikes",
+            "◉ whale activity",
+            "◈ route quality",
+            "✦ new tokens",
+            "⬡ policy engine",
+          ].map(f => (
+            <span key={f} style={{
+              fontFamily: "monospace",
+              fontSize: 11,
+              color: "#c8d8cc",
+              border: "1px solid #1a2d1e",
+              padding: "5px 12px",
+              borderRadius: 2,
+              background: "#080f0a",
+            }}>
+              {f}
+            </span>
           ))}
         </div>
+
+        {/* Wallet button */}
         {mounted && <WalletMultiButton />}
+
+        <p style={{
+          fontFamily: "monospace",
+          fontSize: 10,
+          color: "#2e4235",
+          marginTop: 16,
+        }}>
+          Connect your Solana wallet to get started · Devnet only
+        </p>
       </div>
     </div>
   );

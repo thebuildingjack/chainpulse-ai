@@ -13,11 +13,13 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>
+      <body style={{ background: "#040706", color: "#c8d8cc", margin: 0, padding: 0 }}>
         <WalletContextProvider>
           <AuthProvider>
             <Navbar />
-            <main className="max-w-7xl mx-auto px-6 py-8">{children}</main>
+            <main style={{ maxWidth: 1280, margin: "0 auto", padding: "32px 16px" }}>
+              {children}
+            </main>
           </AuthProvider>
         </WalletContextProvider>
       </body>
