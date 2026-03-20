@@ -47,40 +47,42 @@ export interface AIRunResult {
 
 function buildSystemPrompt(): string {
   return `You are ChainPulse AI — an autonomous Solana on-chain opportunity detection agent.
-Your role is to analyze on-chain data snapshots, identify profit/opportunity signals, and recommend SAFE, BOUNDED actions.
+  Your role is to analyze on-chain data snapshots, identify profit/opportunity signals, and recommend SAFE, BOUNDED actions.
 
-STRICT RULES:
-1. You MUST output ONLY valid JSON matching the exact schema below. No preamble, no explanation, no markdown.
-2. Confidence scores must be 0.0-1.0 (be honest — devnet data is limited, cap at 0.7 unless strong evidence).
-3. Actions must respect the provided guardrails. Never recommend actions that violate limits.
-4. For READ_ONLY mode: only recommend NOTIFY actions.
-5. For EXECUTE_LIMITED mode: you may recommend JUPITER_SWAP only if a route exists and amount <= maxSwapSolPerTx.
-6. Be concise in summaries (max 2 sentences). Evidence must be specific facts from the data.
-7. nextCheckInMinutes should be 3-15 based on signal urgency.
+  STRICT RULES:
+  1. You MUST output ONLY valid JSON matching the exact schema below. No preamble, no explanation, no markdown.
+  2. Confidence scores must be 0.0-1.0 (be honest — devnet data is limited, cap at 0.7 unless strong evidence).
+  3. Actions must respect the provided guardrails. Never recommend actions that violate limits.
+  4. For READ_ONLY mode: only recommend NOTIFY actions.
+  5. For EXECUTE_LIMITED mode: you may recommend JUPITER_SWAP only if a route exists and amount <= maxSwapSolPerTx.
+  6. Be concise in summaries (max 2 sentences). Evidence must be specific facts from the data.
+  7. nextCheckInMinutes should be 3-15 based on signal urgency.
 
-OUTPUT SCHEMA (strict):
-{
-  "insights": [
-    {
-      "title": string,
-      "type": "MOMENTUM" | "VOLUME_SPIKE" | "ROUTE_QUALITY" | "WHALE_ACTIVITY" | "NEW_TOKEN" | "OTHER",
-      "severity": "LOW" | "MED" | "HIGH",
-      "confidence": number,
-      "summary": string,
-      "evidence": string[],
-      "recommendedNext": string
-    }
-  ],
-  "recommendedActions": [
-    {
-      "actionType": "JUPITER_SWAP" | "NOTIFY" | "TRANSFER",
-      "risk": "LOW" | "MED" | "HIGH",
-      "params": object,
-      "reason": string
-    }
-  ],
-  "nextCheckInMinutes": number
-}`;
+  OUTPUT SCHEMA (strict):
+  {
+    "insights": [
+      {
+        "title": string,
+        "type": "MOMENTUM" | "VOLUME_SPIKE" | "ROUTE_QUALITY" | "WHALE_ACTIVITY" | "NEW_TOKEN" | "OTHER",
+        "severity": "LOW" | "MED" | "HIGH",
+        "confidence": number,
+        "summary": string,
+        "evidence": string[],
+        "recommendedNext": string
+      }
+    ],
+    "recommendedActions": [
+      {
+        "actionType": "JUPITER_SWAP" | "NOTIFY" | "TRANSFER",
+        "risk": "LOW" | "MED" | "HIGH",
+        "params": object,
+        "reason": string
+      }
+    ],
+    "nextCheckInMinutes": number
+  }
+
+  CRITICAL: Output ONLY the raw JSON object. No markdown. No code fences. No explanation. No text before or after. Start your response with { and end with }. Nothing else.`;
 }
 
 // ─── Build user prompt ────────────────────────────────────────────────────────
@@ -208,8 +210,17 @@ export async function runAgentInference(input: AgentRunInput): Promise<AIRunResu
   // ── Parse + validate output ─────────────────────────────────────────────────
   let parsed: unknown;
   try {
-    // Strip possible markdown code fences
-    const clean = rawResponse.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    // Strip markdown fences, leading text, anything before first {
+    let clean = rawResponse
+      .replace(/```json\n?/g, "")
+      .replace(/```\n?/g, "")
+      .trim();
+    // Find the first { and last } to extract pure JSON
+    const firstBrace = clean.indexOf("{");
+    const lastBrace = clean.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace !== -1) {
+      clean = clean.slice(firstBrace, lastBrace + 1);
+    }
     parsed = JSON.parse(clean);
   } catch (err) {
     throw new Error(`AI output is not valid JSON: ${rawResponse.slice(0, 200)}`);
