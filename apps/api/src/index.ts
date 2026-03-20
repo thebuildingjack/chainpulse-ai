@@ -48,6 +48,22 @@ function workerAuth(req: express.Request, res: express.Response, next: express.N
 
 // ─── Public routes ────────────────────────────────────────────────────────────
 app.get("/health", (_req, res) => res.json({ status: "ok", ts: new Date().toISOString() }));
+
+// Temp cleanup endpoint — remove after use
+app.post("/admin/cleanup", async (_req, res) => {
+  try {
+    await prisma.agentSession.update({
+      where: { id: "demo-session-001" },
+      data: { isActive: false },
+    });
+    await prisma.insight.deleteMany({
+      where: { title: "AI output validation failed — manual review recommended" },
+    });
+    res.json({ success: true });
+  } catch (e: any) {
+    res.json({ error: e.message });
+  }
+});
 app.use("/auth", authLimiter, authRouter);
 
 // ─── Worker-only routes (no JWT needed) ───────────────────────────────────────
