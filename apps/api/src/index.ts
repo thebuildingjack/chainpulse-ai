@@ -15,6 +15,7 @@ import { requireAuth } from "./middleware/auth";
 import { startScheduler } from "./agent/scheduler";
 
 const app = express();
+app.set("trust proxy", 1); // ← add this line
 const PORT = process.env.PORT || 4000;
 const WORKER_SECRET = process.env.WORKER_SECRET || "dev-worker-secret";
 
