@@ -45,44 +45,32 @@ export interface AIRunResult {
 
 // ─── Build system prompt ──────────────────────────────────────────────────────
 
-function buildSystemPrompt(): string {
-  return `You are ChainPulse AI — an autonomous Solana on-chain opportunity detection agent.
-  Your role is to analyze on-chain data snapshots, identify profit/opportunity signals, and recommend SAFE, BOUNDED actions.
+function buildSystemPrompt(input: AgentRunInput): string {
+  const signals = input.signals.slice(0, 3).map(s =>
+    `${s.type}: score=${s.score.toFixed(2)}, conf=${s.confidence.toFixed(2)}`
+  ).join("\n");
 
-  STRICT RULES:
-  1. You MUST output ONLY valid JSON matching the exact schema below. No preamble, no explanation, no markdown.
-  2. Confidence scores must be 0.0-1.0 (be honest — devnet data is limited, cap at 0.7 unless strong evidence).
-  3. Actions must respect the provided guardrails. Never recommend actions that violate limits.
-  4. For READ_ONLY mode: only recommend NOTIFY actions.
-  5. For EXECUTE_LIMITED mode: you may recommend JUPITER_SWAP only if a route exists and amount <= maxSwapSolPerTx.
-  6. Be concise in summaries (max 2 sentences). Evidence must be specific facts from the data.
-  7. nextCheckInMinutes should be 3-15 based on signal urgency.
+  const quotes = input.jupiterQuotes.slice(0, 2).map(q =>
+    `${q.outputMint.slice(0, 8)}: available=${q.available}, impact=${q.priceImpactPct.toFixed(3)}%`
+  ).join("\n");
 
-  OUTPUT SCHEMA (strict):
-  {
-    "insights": [
-      {
-        "title": string,
-        "type": "MOMENTUM" | "VOLUME_SPIKE" | "ROUTE_QUALITY" | "WHALE_ACTIVITY" | "NEW_TOKEN" | "OTHER",
-        "severity": "LOW" | "MED" | "HIGH",
-        "confidence": number,
-        "summary": string,
-        "evidence": string[],
-        "recommendedNext": string
-      }
-    ],
-    "recommendedActions": [
-      {
-        "actionType": "JUPITER_SWAP" | "NOTIFY" | "TRANSFER",
-        "risk": "LOW" | "MED" | "HIGH",
-        "params": object,
-        "reason": string
-      }
-    ],
-    "nextCheckInMinutes": number
-  }
+  return `Wallet: ${input.walletAddress}
+  SOL: ${input.solBalanceUi.toFixed(4)}
+  Txs: ${input.recentTxCount}
+  Mode: ${input.permissionsMode}
+  Risk: ${input.riskLevel}
+  MaxSwap: ${input.guardrails.maxSwapSolPerTx} SOL
 
-  CRITICAL: Output ONLY the raw JSON object. No markdown. No code fences. No explanation. No text before or after. Start your response with { and end with }. Nothing else.`;
+  Signals:
+  ${signals || "none"}
+
+  Routes:
+  ${quotes || "none"}
+
+  Whale: ${input.signalSummary.whaleDetected}
+  NewMints: ${input.signalSummary.newMintsDetected.slice(0,2).join(", ") || "none"}
+
+  Output JSON only. 1-3 insights, max 1 action.`;
 }
 
 // ─── Build user prompt ────────────────────────────────────────────────────────
@@ -145,7 +133,7 @@ Respond ONLY with the JSON object. No other text.`;
 // ─── Call AI model ────────────────────────────────────────────────────────────
 
 export async function runAgentInference(input: AgentRunInput): Promise<AIRunResult> {
-  const systemPrompt = buildSystemPrompt();
+  const systemPrompt = buildSystemPrompt(input);
   const userPrompt = buildUserPrompt(input);
 
   let rawResponse = "";
