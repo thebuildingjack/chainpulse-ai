@@ -5,7 +5,7 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-const DEMO_WALLET = process.env.DEMO_WALLET_ADDRESS || "DemoWa11etAddressForChainPulseAIHackathon1";
+const DEMO_WALLET = process.env.DEMO_WALLET_ADDRESS || "11111111111111111111111111111111";
 const USDC_DEVNET = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 const SOL_MINT = "So11111111111111111111111111111111111111112";
 
