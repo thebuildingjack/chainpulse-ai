@@ -1,7 +1,4 @@
 // apps/api/src/agent/aiPipeline.ts
-// AI inference pipeline with tool-calling pattern and strict JSON output.
-// The model is instructed to act as the "brain" of ChainPulse AI.
-
 import { AIAgentOutputSchema } from "@chainpulse/shared";
 import type { ComputedSignals, WalletBalancesResult } from "../tools/solanaTools";
 
@@ -43,37 +40,37 @@ export interface AIRunResult {
   modelUsed: string;
 }
 
-// ─── Build system prompt ──────────────────────────────────────────────────────
+// ─── System prompt — instructions only, no data ───────────────────────────────
 
-function buildSystemPrompt(input: AgentRunInput): string {
-  const signals = input.signals.slice(0, 3).map(s =>
-    `${s.type}: score=${s.score.toFixed(2)}, conf=${s.confidence.toFixed(2)}`
-  ).join("\n");
+function buildSystemPrompt(): string {
+  return `You are a Solana on-chain analysis AI. Analyze wallet data and return ONLY a JSON object.
 
-  const quotes = input.jupiterQuotes.slice(0, 2).map(q =>
-    `${q.outputMint.slice(0, 8)}: available=${q.available}, impact=${q.priceImpactPct.toFixed(3)}%`
-  ).join("\n");
-
-  return `Wallet: ${input.walletAddress}
-  SOL: ${input.solBalanceUi.toFixed(4)}
-  Txs: ${input.recentTxCount}
-  Mode: ${input.permissionsMode}
-  Risk: ${input.riskLevel}
-  MaxSwap: ${input.guardrails.maxSwapSolPerTx} SOL
-
-  Signals:
-  ${signals || "none"}
-
-  Routes:
-  ${quotes || "none"}
-
-  Whale: ${input.signalSummary.whaleDetected}
-  NewMints: ${input.signalSummary.newMintsDetected.slice(0,2).join(", ") || "none"}
-
-  Output JSON only. 1-3 insights, max 1 action.`;
+REQUIRED OUTPUT FORMAT - return exactly this structure:
+{
+  "insights": [
+    {
+      "title": "short descriptive title",
+      "type": "MOMENTUM",
+      "severity": "LOW",
+      "confidence": 0.6,
+      "summary": "one sentence summary",
+      "evidence": ["fact 1", "fact 2"],
+      "recommendedNext": "what to do next"
+    }
+  ],
+  "recommendedActions": [],
+  "nextCheckInMinutes": 15
 }
 
-// ─── Build user prompt ────────────────────────────────────────────────────────
+Rules:
+- type must be one of: MOMENTUM, VOLUME_SPIKE, ROUTE_QUALITY, WHALE_ACTIVITY, NEW_TOKEN, OTHER
+- severity must be one of: LOW, MED, HIGH
+- confidence must be 0.0 to 1.0
+- Return 1-2 insights max
+- Return ONLY the JSON. No explanation. No markdown. Start with {`;
+}
+
+// ─── User prompt — data only, very short ─────────────────────────────────────
 
 function buildUserPrompt(input: AgentRunInput): string {
   const topSignals = input.signals
@@ -84,23 +81,20 @@ function buildUserPrompt(input: AgentRunInput): string {
   const topRoute = input.jupiterQuotes.find(q => q.available);
 
   return `Wallet: ${input.walletAddress.slice(0, 16)}
-  SOL: ${input.solBalanceUi.toFixed(3)}
-  TxCount: ${input.recentTxCount}
-  Mode: ${input.permissionsMode}
-  Risk: ${input.riskLevel}
-  MaxSwap: ${input.guardrails.maxSwapSolPerTx}SOL
-  Signals: ${topSignals || "none"}
-  RouteAvail: ${topRoute ? `yes(impact=${topRoute.priceImpactPct.toFixed(3)}%)` : "no"}
-  Whale: ${input.signalSummary.whaleDetected}
-  SOLChange: ${input.signalSummary.solBalanceChangePct.toFixed(1)}%
-
-  Respond with JSON only. 1-2 insights max. No markdown.`;
+SOL: ${input.solBalanceUi.toFixed(3)}
+TxCount: ${input.recentTxCount}
+Mode: ${input.permissionsMode}
+Risk: ${input.riskLevel}
+Signals: ${topSignals || "none"}
+Route: ${topRoute ? `yes(impact=${topRoute.priceImpactPct.toFixed(3)}%)` : "no routes available"}
+Whale: ${input.signalSummary.whaleDetected}
+SOLChange: ${input.signalSummary.solBalanceChangePct.toFixed(1)}%`;
 }
 
 // ─── Call AI model ────────────────────────────────────────────────────────────
 
 export async function runAgentInference(input: AgentRunInput): Promise<AIRunResult> {
-  const systemPrompt = buildSystemPrompt(input);
+  const systemPrompt = buildSystemPrompt();
   const userPrompt = buildUserPrompt(input);
 
   let rawResponse = "";
@@ -116,7 +110,7 @@ export async function runAgentInference(input: AgentRunInput): Promise<AIRunResu
       },
       body: JSON.stringify({
         model: AI_MODEL,
-        max_tokens: 2048,
+        max_tokens: 512,
         system: systemPrompt,
         messages: [{ role: "user", content: userPrompt }],
       }),
@@ -131,6 +125,7 @@ export async function runAgentInference(input: AgentRunInput): Promise<AIRunResu
     const data = await resp.json() as { content?: Array<{ text: string }>; model?: string };
     rawResponse = data.content?.[0]?.text || "";
     modelUsed = data.model || AI_MODEL;
+
   } else if (AI_PROVIDER === "openai") {
     const resp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -144,7 +139,7 @@ export async function runAgentInference(input: AgentRunInput): Promise<AIRunResu
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
-        max_tokens: 512,  // ← add this line
+        max_tokens: 512,
         response_format: { type: "json_object" },
       }),
       signal: AbortSignal.timeout(30000),
@@ -158,19 +153,18 @@ export async function runAgentInference(input: AgentRunInput): Promise<AIRunResu
     const data = await resp.json() as { choices?: Array<{ message?: { content: string } }>; model?: string };
     rawResponse = data.choices?.[0]?.message?.content || "";
     modelUsed = data.model || AI_MODEL;
+
   } else {
     throw new Error(`Unsupported AI_PROVIDER: ${AI_PROVIDER}`);
   }
 
-  // ── Parse + validate output ─────────────────────────────────────────────────
+  // ── Parse + validate output ───────────────────────────────────────────────
   let parsed: unknown;
   try {
-    // Strip markdown fences, leading text, anything before first {
     let clean = rawResponse
       .replace(/```json\n?/g, "")
       .replace(/```\n?/g, "")
       .trim();
-    // Find the first { and last } to extract pure JSON
     const firstBrace = clean.indexOf("{");
     const lastBrace = clean.lastIndexOf("}");
     if (firstBrace !== -1 && lastBrace !== -1) {
@@ -183,8 +177,7 @@ export async function runAgentInference(input: AgentRunInput): Promise<AIRunResu
 
   const validated = AIAgentOutputSchema.safeParse(parsed);
   if (!validated.success) {
-    console.warn("[AI] Schema validation failed, using best-effort fallback");
-    // Return a minimal valid output rather than crashing the loop
+    console.warn("[AI] Schema validation failed:", validated.error.flatten());
     const fallback = {
       insights: [
         {
