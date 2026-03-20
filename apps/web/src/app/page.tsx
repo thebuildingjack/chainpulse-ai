@@ -322,23 +322,28 @@ function LandingScreen() {
           padding: "0 8px",
         }}>
           {[
-            "▲ momentum",
-            "⚡ volume spikes",
-            "◉ whale activity",
-            "◈ route quality",
-            "✦ new tokens",
-            "⬡ policy engine",
+            { icon: "📈", label: "Momentum Signals" },
+            { icon: "🐋", label: "Whale Detection" },
+            { icon: "🛣️", label: "Route Quality" },
+            { icon: "⚡", label: "Volume Spikes" },
+            { icon: "✨", label: "New Tokens" },
+            { icon: "🛡️", label: "Policy Engine" },
           ].map(f => (
-            <span key={f} style={{
-              fontFamily: "monospace",
-              fontSize: 11,
+            <span key={f.label} style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              fontFamily: "system-ui, sans-serif",
+              fontSize: 13,
               color: "#c8d8cc",
               border: "1px solid #1a2d1e",
-              padding: "5px 12px",
-              borderRadius: 2,
+              padding: "8px 14px",
+              borderRadius: 20,
               background: "#080f0a",
+              whiteSpace: "nowrap",
             }}>
-              {f}
+              <span style={{ fontSize: 16 }}>{f.icon}</span>
+              {f.label}
             </span>
           ))}
         </div>
