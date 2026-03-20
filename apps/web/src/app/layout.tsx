@@ -4,17 +4,11 @@ import "@solana/wallet-adapter-react-ui/styles.css";
 import { WalletContextProvider } from "@/components/providers/WalletProvider";
 import { AuthProvider } from "@/components/providers/AuthProvider";
 import { Navbar } from "@/components/ui/Navbar";
-import { useEffect } from "react";
 
 export const metadata: Metadata = {
   title: "ChainPulse AI",
   description: "Solana on-chain opportunity agent",
 };
-
-// Ping the API on app load to wake Render if sleeping
-useEffect(() => {
-  fetch(`${process.env.NEXT_PUBLIC_API_URL}/health`).catch(() => {});
-}, []);
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
