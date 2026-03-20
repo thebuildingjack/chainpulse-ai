@@ -1,4 +1,3 @@
-// apps/web/src/components/providers/AuthProvider.tsx
 "use client";
 
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
@@ -11,23 +10,33 @@ interface AuthState {
   userId?: string;
   walletAddress?: string;
   loading: boolean;
+  authError: string | null;
+  authLoading: boolean;
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
+  clearAuthError: () => void;
 }
 
 const AuthContext = createContext<AuthState>({
   authenticated: false,
   loading: true,
+  authError: null,
+  authLoading: false,
   signIn: async () => {},
   signOut: async () => {},
+  clearAuthError: () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { publicKey, signMessage, connected } = useWallet();
+
+  // ── All useState hooks inside the component ──────────────────────────────
   const [authenticated, setAuthenticated] = useState(false);
   const [userId, setUserId] = useState<string>();
   const [walletAddress, setWalletAddress] = useState<string>();
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState(false);
 
   // Check existing session on mount
   useEffect(() => {
@@ -43,76 +52,78 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .finally(() => setLoading(false));
   }, []);
 
-const signIn = useCallback(async () => {
-  if (!connected) {
-    alert("Please connect your wallet first before signing in.");
-    return;
-  }
-  if (!publicKey || !signMessage) {
-    alert("Wallet not ready — please try again.");
-    return;
-  }
-
-  try {
-    const address = publicKey.toBase58();
-
-    const { nonce, message } = await apiFetch("/auth/nonce", {
-      method: "POST",
-      body: JSON.stringify({ walletAddress: address }),
-    });
-
-    const messageBytes = new TextEncoder().encode(message);
-    const signatureBytes = await signMessage(messageBytes);
-    const signatureBase58 = bs58.encode(signatureBytes);
-
-    const result = await apiFetch("/auth/verify", {
-      method: "POST",
-      body: JSON.stringify({
-        walletAddress: address,
-        signature: signatureBase58,
-        nonce,
-      }),
-    });
-
-    if (result.success) {
-      setAuthenticated(true);
-      setUserId(result.userId);
-      setWalletAddress(result.walletAddress);
+  const signIn = useCallback(async () => {
+    if (!connected) {
+      setAuthError("Please connect your wallet first");
+      return;
     }
-  } catch (err: any) {
-    console.error("[Auth] Sign in failed:", err);
-    if (err.message?.includes("User rejected")) {
-      alert("Signature rejected. Please approve the sign-in request in your wallet.");
-    } else if (err.message?.includes("fetch")) {
-      alert("Cannot reach the API. Make sure the backend is running on port 4000.");
-    } else {
-      alert(`Sign in failed: ${err.message}`);
+    if (!publicKey || !signMessage) {
+      setAuthError("Wallet not ready — please try again");
+      return;
     }
-  }
-}, [publicKey, signMessage, connected]);
+
+    setAuthError(null);
+    setAuthLoading(true);
+
+    try {
+      const address = publicKey.toBase58();
+      const { nonce, message } = await apiFetch("/auth/nonce", {
+        method: "POST",
+        body: JSON.stringify({ walletAddress: address }),
+      });
+      const messageBytes = new TextEncoder().encode(message);
+      const signatureBytes = await signMessage(messageBytes);
+      const signatureBase58 = bs58.encode(signatureBytes);
+      const result = await apiFetch("/auth/verify", {
+        method: "POST",
+        body: JSON.stringify({ walletAddress: address, signature: signatureBase58, nonce }),
+      });
+      if (result.success) {
+        setAuthenticated(true);
+        setUserId(result.userId);
+        setWalletAddress(result.walletAddress);
+      }
+    } catch (err: any) {
+      if (err.message?.includes("User rejected")) {
+        setAuthError("Signature rejected — please approve in your wallet");
+      } else if (err.message?.includes("fetch") || err.message?.includes("reach") || err.message?.includes("4000")) {
+        setAuthError("API unreachable — backend may be sleeping, try again in 30s");
+      } else {
+        setAuthError(err.message || "Sign in failed");
+      }
+    } finally {
+      setAuthLoading(false);
+    }
+  }, [publicKey, signMessage, connected]);
 
   const signOut = useCallback(async () => {
-    await apiFetch("/auth/logout", { method: "POST" });
+    await apiFetch("/auth/logout", { method: "POST" }).catch(() => {});
     setAuthenticated(false);
     setUserId(undefined);
     setWalletAddress(undefined);
   }, []);
 
-  // Auto sign-in when wallet connects (if not already authenticated)
+  const clearAuthError = useCallback(() => setAuthError(null), []);
+
+  // Handle wallet disconnect
   useEffect(() => {
-    if (connected && publicKey && !authenticated && !loading) {
-      // Don't auto-sign-in — require explicit user action for security
-    }
     if (!connected && authenticated) {
-      // Wallet disconnected — sign out
       signOut();
     }
-  }, [connected, publicKey]);
+  }, [connected, authenticated, signOut]);
 
   return (
-    <AuthContext.Provider
-      value={{ authenticated, userId, walletAddress, loading, signIn, signOut }}
-    >
+    <AuthContext.Provider value={{
+      authenticated,
+      userId,
+      walletAddress,
+      loading,
+      authError,
+      authLoading,
+      signIn,
+      signOut,
+      clearAuthError,
+    }}>
       {children}
     </AuthContext.Provider>
   );
