@@ -41,6 +41,8 @@ const TYPE_ICONS: Record<string, string> = {
 
 export function ActionCard({ action, onUpdate }: { action: Action; onUpdate: () => void }) {
   const [loading, setLoading] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);  // ADD
+  const [cardError, setCardError] = useState<string | null>(null);  // ADD
 
   const handleApprove = async () => {
     setLoading(true);
@@ -48,7 +50,7 @@ export function ActionCard({ action, onUpdate }: { action: Action; onUpdate: () 
       await api.actions.approve(action.id);
       onUpdate();
     } catch (e: any) {
-      alert(`Approve failed: ${e.message}`);
+      setCardError(`Approve failed: ${e.message}`);
     } finally {
       setLoading(false);
     }
@@ -60,14 +62,14 @@ export function ActionCard({ action, onUpdate }: { action: Action; onUpdate: () 
       await api.actions.reject(action.id);
       onUpdate();
     } catch (e: any) {
-      alert(`Reject failed: ${e.message}`);
+      setCardError(`Reject failed: ${e.message}`);
     } finally {
       setLoading(false);
     }
   };
 
   const handleExecute = async () => {
-    if (!confirm("Execute this action on-chain? This cannot be undone.")) return;
+    setShowConfirm(false);
     setLoading(true);
     try {
       const result = await api.actions.execute(action.id);
@@ -76,7 +78,7 @@ export function ActionCard({ action, onUpdate }: { action: Action; onUpdate: () 
       }
       onUpdate();
     } catch (e: any) {
-      alert(`Execute failed: ${e.message}`);
+      setCardError(`Execute failed: ${e.message}`);
     } finally {
       setLoading(false);
     }
@@ -157,6 +159,12 @@ export function ActionCard({ action, onUpdate }: { action: Action; onUpdate: () 
       {action.failureReason && (
         <p className="text-xs text-red-400 mb-3">⚠ {action.failureReason}</p>
       )}
+      {cardError && (
+        <div className="flex items-center justify-between bg-red-900/10 border border-red-900/20 rounded-lg px-3 py-2 mb-3">
+          <span className="text-xs text-red-400">⚠ {cardError}</span>
+          <button onClick={() => setCardError(null)} className="text-red-400 text-xs ml-2">✕</button>
+        </div>
+      )}
 
       {/* Actions */}
       {action.status === "PENDING_APPROVAL" && (
@@ -179,13 +187,39 @@ export function ActionCard({ action, onUpdate }: { action: Action; onUpdate: () 
       )}
 
       {action.status === "APPROVED" && (
-        <button
-          onClick={handleExecute}
-          disabled={loading}
-          className="w-full py-2 text-sm bg-[#9945FF]/20 text-[#9945FF] border border-[#9945FF]/30 rounded-lg hover:bg-[#9945FF]/30 transition-colors disabled:opacity-50"
-        >
-          {loading ? "Executing..." : "⚡ Execute On-Chain"}
-        </button>
+        <>
+          {showConfirm ? (
+            <div className="space-y-2 mt-2">
+              <p className="text-xs text-yellow-400 text-center">
+                ⚠ This executes on-chain and cannot be undone
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleExecute}
+                  disabled={loading}
+                  className="flex-1 py-2 text-sm bg-[#9945FF]/20 text-[#9945FF] border border-[#9945FF]/30 rounded-lg hover:bg-[#9945FF]/30 transition-colors disabled:opacity-50"
+                >
+                  {loading ? "Executing..." : "⚡ Confirm"}
+                </button>
+                <button
+                  onClick={() => setShowConfirm(false)}
+                  disabled={loading}
+                  className="flex-1 py-2 text-sm bg-gray-500/10 text-gray-400 border border-gray-500/20 rounded-lg hover:bg-gray-500/20 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowConfirm(true)}
+              disabled={loading}
+              className="w-full py-2 text-sm bg-[#9945FF]/20 text-[#9945FF] border border-[#9945FF]/30 rounded-lg hover:bg-[#9945FF]/30 transition-colors disabled:opacity-50 mt-2"
+            >
+              ⚡ Execute On-Chain
+            </button>
+          )}
+        </>
       )}
     </div>
   );
