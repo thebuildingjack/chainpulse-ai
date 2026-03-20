@@ -171,11 +171,11 @@ export async function runAgentInference(input: AgentRunInput): Promise<AIRunResu
       throw new Error(`AI API error ${resp.status}: ${err}`);
     }
 
-    const data = await resp.json();
+    const data = await resp.json() as { content?: Array<{ text: string }>; model?: string };
     rawResponse = data.content?.[0]?.text || "";
     modelUsed = data.model || AI_MODEL;
   } else if (AI_PROVIDER === "openai") {
-    const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+    const resp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -198,7 +198,7 @@ export async function runAgentInference(input: AgentRunInput): Promise<AIRunResu
       throw new Error(`OpenAI API error ${resp.status}: ${err}`);
     }
 
-    const data = await resp.json();
+    const data = await resp.json() as { choices?: Array<{ message?: { content: string } }>; model?: string };
     rawResponse = data.choices?.[0]?.message?.content || "";
     modelUsed = data.model || AI_MODEL;
   } else {
